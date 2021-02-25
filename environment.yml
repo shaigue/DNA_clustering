@@ -1,0 +1,5 @@
+name: DNA_clustering
+channels:
+  - anaconda
+dependencies:
+  - numpy
