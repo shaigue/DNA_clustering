@@ -4,6 +4,8 @@ import random
 import time
 import math
 
+A, C, G, T = 0, 1, 2, 3
+
 
 class DNASample:
     """A class that represents a DNA samples with potential errors.
@@ -70,7 +72,9 @@ def longest_run(strand: List[int]) -> int:
 
 def synthesis_term_var(strand: List[int]) -> float:
     """Calculates a factor that gives higher probability for strands with long runs to terminate"""
-    return math.log2(1 + longest_run(strand) / len(strand))
+    cut_off = 2 + math.log2(len(strand)) / 2
+    max_run = min(cut_off, longest_run(strand))
+    return max_run / cut_off
 
 
 def synthesis(orig_strands: List[List[int]], physical_redundancy: int, p_sub: float, p_del: float, p_ins: float,
@@ -128,30 +132,23 @@ def storage(samples: List[DNASample], p_decay: List[float]) -> List[DNASample]:
 
 
 def pcr_duplicate_prob(strand: List[int]) -> float:
-    """Gives higher probability for duplication in PCR to strands that the distribution of symbols is close to uniform.
-    If storage error occur in the strand then it will not be duplicated.
-    """
-    # should be close to 1, and 0 if there is storage errors
-    if -1 in strand:
-        return 0
-    bin_count = [0] * 4
-    for i in strand:
-        bin_count[i] += 1
-    distribution = [count / len(strand) for count in bin_count]
-    deviation = [abs(d - 1 / 4) for d in distribution]
-    d = sum(deviation) / 4
-    return 1 - d
+    """Gives higher chance for duplication for low CG contents, and low for high CG contents"""
+    strand_length = len(strand)
+    cg_count = sum(1 for symbol in strand if symbol in [C, G])
+    cg_rate = cg_count / strand_length
+    return 1 - 0.25 * cg_rate
 
 
 def pcr(samples: List[DNASample]) -> List[DNASample]:
     """Simulates a PCR cycle where some of the strands will be duplicated, and duplication rates are strand specific"""
-    samples_copy = samples.copy()
-    for sample in samples:
+    n_samples = len(samples)
+    for i in range(n_samples):
+        sample = samples[i]
         p = pcr_duplicate_prob(sample.strand)
         r = random.random()
         if r < p:
-            samples_copy.append(DNASample(sample.strand.copy(), sample.orig_idx))
-    return samples_copy
+            samples.append(DNASample(sample.strand.copy(), sample.orig_idx))
+    return samples
 
 
 def sampling(samples: List[DNASample], n_samples: int) -> List[DNASample]:
@@ -228,11 +225,11 @@ def create_dna_samples(
         p_ins=p_ins_syn,
         p_term_max=p_term_max_syn
     )
-    # storage
-    samples = storage(samples, p_decay)
-    # PCR
+    # PCR amplification
     for i in range(pcr_rounds):
         samples = pcr(samples)
+    # storage
+    samples = storage(samples, p_decay)
     # sampling
     samples = sampling(samples, n_final_samples)
     # sequencing
