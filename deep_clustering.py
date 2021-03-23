@@ -1,12 +1,17 @@
 import numpy as np
 from torch.utils.data import Dataset
+import torch
 
-from create_dataset import load_data
+from dataset import load_data
 from model import AutoEncoder
-from trainer import Trainer
+from train import Trainer
 
 
 PAD_SYMBOL = -1
+BEST_LOSS_LAMBDA = {
+    'simple': 0.5,
+    'complex': 0.5,
+}
 
 
 def pad_list_to_numpy(list_vector: list[int], target_length: int, pad_value: int):
@@ -72,17 +77,48 @@ class DNADataset(Dataset):
         return len(self.one_hot_encoded)
 
 
-def run_training():
-    train_dataset = DNADataset('train', 'complex')
-    dev_dataset = DNADataset('dev', 'complex', return_cluster_label=True)
+def load_datasets(generator: str):
+    train = DNADataset('train', generator)
+    dev = DNADataset('dev', generator, return_cluster_label=True)
+    test = DNADataset('test', generator, return_cluster_label=True)
+    return train, dev, test
+
+
+def run_training(generator: str):
+    train_data, dev_data, test_data = load_datasets(generator)
     model = AutoEncoder()
-    trainer = Trainer(model, train_dataset, dev_dataset)
-    # trainer.train(3)
-    accuracy = trainer.evaluate()
+    trainer = Trainer(model, train_data, dev_data, loss_lambda=BEST_LOSS_LAMBDA[generator])
+    trainer.train(n_epochs=40)
+    accuracy = trainer.evaluate(test_data)
+    torch.save(model.state_dict(), f'{generator}_trained_model.pt')
     print(accuracy)
 
 
+def tune_hyper_parameters(generator: str):
+    """Runs over different values of the hyper parameters and checks which one of them is the best."""
+    options = [0, 0.01, 0.1, 0.5, 0.9, 0.99, 1]
+    train_data, dev_data, _ = load_datasets(generator)
+    best_loss_lambda = 0
+    best_accuracy = 0
+    for loss_lambda in options:
+        model = AutoEncoder()
+        trainer = Trainer(model, train_data, dev_data, loss_lambda=loss_lambda)
+        trainer.train(n_epochs=20, verbose=True, evaluate=True)
+        accuracy = trainer.evaluate()
+        print(f"lambda={loss_lambda}, accuracy={accuracy}")
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_loss_lambda = loss_lambda
+
+    print(f"best param={best_loss_lambda}, best accuracy={best_accuracy}")
+    return best_loss_lambda, best_accuracy
+
+
 if __name__ == "__main__":
-    run_training()
+    print("tuning complex...")
+    tune_hyper_parameters('complex')
+    print("tuning simple...")
+    tune_hyper_parameters('simple')
+    # run_training()
 
 
