@@ -1,6 +1,6 @@
 import time
 
-
+from collections import defaultdict
 import torch
 from torch import nn
 from sklearn.cluster import KMeans
@@ -14,29 +14,34 @@ from clustering_accuracy import convert_cluster_labels_to_partition, clustering_
 
 class Trainer:
     def __init__(self, model: nn.Module, train_dataset: Dataset, dev_dataset: Dataset, eval_every=5, loss_lambda=0.5,
-                 clustering_gamma=0.9):
+                 clustering_gamma=0.9, weight_decay=0.01):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = model.to(self.device)
         self.train_dataset = train_dataset
         self.dev_dataset = dev_dataset
         self.train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-        self.optimizer = torch.optim.Adam(model.parameters(), weight_decay=0.01)
+        self.optimizer = torch.optim.Adam(model.parameters(), weight_decay=weight_decay)
         self.eval_every = eval_every
         self.loss_lambda = loss_lambda
         self.clustering_gamma = clustering_gamma
 
-    def train(self, n_epochs: int, verbose=True, evaluate=True):
+    def train(self, n_epochs: int, verbose=True, evaluate=True) -> dict:
         """Train the model for n_epochs"""
+        training_log = defaultdict(list)
+
         for i in range(n_epochs):
             loss = self.train_epoch()
+            training_log['training_loss'].append({'epoch': i, 'value': loss})
             if verbose:
                 print(f'epoch={i + 1}, mean_loss={loss}')
             if evaluate and (i + 1) % self.eval_every == 0:
                 if verbose:
                     print(f'evaluating...')
                 dev_accuracy = self.evaluate(self.dev_dataset)
+                training_log['dev_accuracy'].append({'epoch': i, 'value': dev_accuracy})
                 if verbose:
                     print(f'dev_accuracy={dev_accuracy}')
+        return dict(training_log)
 
     def train_epoch(self) -> float:
         """Train on the entire train data once"""
@@ -82,12 +87,10 @@ class Trainer:
             label_list = np.concatenate(label_list)
             # assumes that the labels are {0, 1, 2, ... n - 1}. so the number of clusters is 'n'
             n_clusters = np.max(label_list) + 1
-            # TODO: remove the time printing here
-            start = time.time()
+
             clustering_algo = KMeans(n_clusters)
             cluster_estimation = clustering_algo.fit_predict(embedding_list)
-            end = time.time()
-            print(f"clustering time = {end - start}")
+
             # convert the clustering to a partition so it will fit the definition of the accuracy defined in the paper
             label_list = convert_cluster_labels_to_partition(label_list)
             cluster_estimation = convert_cluster_labels_to_partition(cluster_estimation)
