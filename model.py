@@ -21,7 +21,7 @@ class Encoder(nn.Module):
         super().__init__()
         self.n_channels = n_channels
         self.conv1 = get_basic_conv(kernel_size, self.n_channels)
-        self.conv2 = get_basic_conv(kernel_size, self.n_channels)
+        # self.conv2 = get_basic_conv(kernel_size, self.n_channels)
         self.conv3 = get_basic_conv(kernel_size, self.n_channels, 1)
 
     def forward(self, x):
@@ -30,8 +30,8 @@ class Encoder(nn.Module):
         assert seq_len % 2 == 0, f"sequence length should be even, got {seq_len}"
         x = self.conv1(x)
         x = torch.relu(x)
-        x = self.conv2(x)
-        x = torch.relu(x)
+        # x = self.conv2(x)
+        # x = torch.relu(x)
         x = torch.avg_pool1d(x, kernel_size=2)
         x = self.conv3(x)
         # remove the channel dimension
@@ -46,7 +46,7 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.n_channels = n_channels
         self.conv1 = get_basic_conv(kernel_size, 1, self.n_channels)
-        self.conv2 = get_basic_conv(kernel_size, self.n_channels)
+        # self.conv2 = get_basic_conv(kernel_size, self.n_channels)
         self.conv3 = get_basic_conv(kernel_size, self.n_channels)
 
     def forward(self, x):
@@ -56,8 +56,8 @@ class Decoder(nn.Module):
         x = self.conv1(x)
         x = torch.relu(x)
         x = F.interpolate(x, scale_factor=2, mode='linear', align_corners=False)
-        x = self.conv2(x)
-        x = torch.relu(x)
+        # x = self.conv2(x)
+        # x = torch.relu(x)
         x = self.conv3(x)
         return x
 
@@ -85,13 +85,15 @@ class AutoEncoder(nn.Module):
 def reconstruction_loss(samples, decoded_samples):
     """A loss that takes into account the difference between the input to the encoder and the output of the decoder,
     and forces them to be small."""
-    return torch.norm(samples - decoded_samples)
+    return F.mse_loss(samples, decoded_samples)
+    # return torch.norm(samples - decoded_samples)
 
 
 def k_means_loss(sample_embedding, centroid_embedding):
     """A loss that takes into account the difference between the embedding of the error sample and the original sample,
     and forces them to be small."""
-    return torch.norm(sample_embedding - centroid_embedding)
+    return F.mse_loss(sample_embedding, centroid_embedding)
+    # return torch.norm(sample_embedding - centroid_embedding)
 
 
 def combined_loss(samples, sample_embedding, centroid_embedding, decoded_samples, loss_lambda):

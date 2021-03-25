@@ -6,11 +6,15 @@ from dataset import load_data
 from model import AutoEncoder
 from train import Trainer
 
+import json
+import logging
+from itertools import product
+from collections import defaultdict
 
 PAD_SYMBOL = -1
 BEST_LOSS_LAMBDA = {
-    'simple': 0.5,
-    'complex': 0.5,
+    'simple': 0.0, # or 0.01
+    'complex': 0.1, # or 0.01
 }
 
 
@@ -94,31 +98,81 @@ def run_training(generator: str):
     print(accuracy)
 
 
-def tune_hyper_parameters(generator: str):
+def tune_loss_lambda():
     """Runs over different values of the hyper parameters and checks which one of them is the best."""
+    logging.basicConfig(filename='loss_lambda_tune.log', filemode='w', level=logging.INFO)
+    logging.info("starting loss_lambda_tune.")
     options = [0, 0.01, 0.1, 0.5, 0.9, 0.99, 1]
-    train_data, dev_data, _ = load_datasets(generator)
-    best_loss_lambda = 0
+    logs = {}
+
+    for generator in ['complex', 'simple']:
+        train_data, dev_data, _ = load_datasets(generator)
+        best_loss_lambda = 0
+        best_accuracy = 0
+        logs[generator] = {}
+
+        for loss_lambda in options:
+            model = AutoEncoder()
+            trainer = Trainer(model, train_data, dev_data, loss_lambda=loss_lambda, weight_decay=0)
+            train_logs = trainer.train(n_epochs=15, verbose=False, evaluate=True)
+            accuracy = trainer.evaluate()
+
+            logging.info(f"lambda={loss_lambda}, accuracy={accuracy}")
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                best_loss_lambda = loss_lambda
+
+            logs[generator][loss_lambda] = {'train_logs': train_logs, 'accuracy': accuracy}
+
+        logs[generator]['best_loss_lambda'] = best_loss_lambda
+        logs[generator]['best_accuracy'] = best_accuracy
+        logging.info(f"best param={best_loss_lambda}, best accuracy={best_accuracy}")
+
+    with open('loss_lambda_tune.json', 'w') as f:
+        json.dump(logs, f)
+
+
+def tune_complex_hp():
+    logging.basicConfig(filename='complex_hp_tune.log', filemode='w', level=logging.INFO)
+    logging.info("starting complex hp tune.")
+
+    weight_decay_opt = [0, 1e-4, 1e-2]
+    loss_lambda_opt = [0, 0.01, 0.1]
+    options = product(weight_decay_opt, loss_lambda_opt)
+
+    train_data, dev_data, _ = load_datasets('complex')
+    logs = {}
+    best_params = None
     best_accuracy = 0
-    for loss_lambda in options:
+    for i, (weight_decay, loss_lambda) in enumerate(options):
         model = AutoEncoder()
-        trainer = Trainer(model, train_data, dev_data, loss_lambda=loss_lambda)
-        trainer.train(n_epochs=20, verbose=True, evaluate=True)
+        trainer = Trainer(model, train_data, dev_data, loss_lambda=loss_lambda, weight_decay=weight_decay)
+        train_logs = trainer.train(n_epochs=10, verbose=False, evaluate=True)
         accuracy = trainer.evaluate()
-        print(f"lambda={loss_lambda}, accuracy={accuracy}")
+
+        logs[i] = {'train_logs': train_logs, 'weight_decay': weight_decay, 'loss_lambda': loss_lambda,
+                   'accuracy': accuracy}
+        logging.info(f"weight_decay={weight_decay}, loss_lambda={loss_lambda}, accuracy={accuracy}")
+
         if accuracy > best_accuracy:
             best_accuracy = accuracy
-            best_loss_lambda = loss_lambda
+            best_params = {'weight_decay': weight_decay, 'loss_lambda': loss_lambda}
 
-    print(f"best param={best_loss_lambda}, best accuracy={best_accuracy}")
-    return best_loss_lambda, best_accuracy
+    logging.info(f"best param={best_params}, best accuracy={best_accuracy}")
+    logs['best_params'] = best_params
+    logs['best_accuracy'] = best_accuracy
+    with open('complex_hp_tune.json', 'w') as f:
+        json.dump(logs, f)
+    logging.info("finished.")
 
 
 if __name__ == "__main__":
-    print("tuning complex...")
-    tune_hyper_parameters('complex')
-    print("tuning simple...")
-    tune_hyper_parameters('simple')
+    # print("tuning complex...")
+    # tune_loss_lambda('complex')
+    # print("tuning simple...")
+    # tune_loss_lambda('simple')
+    # tune_complex_hp()
+    tune_loss_lambda()
     # run_training()
 
 
