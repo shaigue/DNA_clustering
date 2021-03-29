@@ -2,7 +2,13 @@
 import numpy as np
 
 
-def convert_cluster_labels_to_partition(labels: np.ndarray):
+def convert_cluster_labels_to_partition(labels: np.ndarray) -> list[set[int]]:
+    """Receives per sample cluster labels, and returns a partition - a list of sets that represents the different
+    clusters.
+
+    :param labels: an array with cluster labels of the i'th sample in the i'th entry
+    :return a list of sets (a partition of all the labels) where each set is a cluster.
+    """
     n_clusters = max(labels) + 1
     partition = [set() for _ in range(n_clusters)]
     for i, label in enumerate(labels):
@@ -10,7 +16,13 @@ def convert_cluster_labels_to_partition(labels: np.ndarray):
     return partition
 
 
-def check_valid_partition(partition: list[set[int]]):
+def check_valid_partition(partition: list[set[int]]) -> bool:
+    """Checks that a list of sets is indeed a partition, i.e. all the sets are mutually exclusive, and they cover all
+    the samples from 0-n.
+
+    :param partition: this is a list of the clusters
+    :return True if it is a partition, otherwise False
+    """
     # check pairwise disjunction
     n = len(partition)
     for i in range(n):
@@ -29,11 +41,13 @@ def check_valid_partition(partition: list[set[int]]):
 
 def clustering_accuracy(true_clustering: list[set[int]], estimated_clustering: list[set[int]],
                         min_part_coef: float = 1) -> float:
-    """We assume that the input is a partition of the set {0,...,n}
+    """This is the clustering accuracy described in "clustering billions of DNA" paper.
+    We assume that the input is a partition of the set {0,...,n}
 
-    :param true_clustering:
-    :param estimated_clustering:
-    :param min_part_coef:
+    :param true_clustering: ground truth clustering of each sample
+    :param estimated_clustering: estimated clustering partition
+    :param min_part_coef: this is the lambda parameter described in the paper, represents what fraction of the original
+        cluster has to be present in the estimated cluster so it will count as a good cluster.
     :return: the clustering accuracy
     """
     assert check_valid_partition(estimated_clustering)

@@ -1,6 +1,6 @@
 import random
 
-from complex_generative_model import DNASampleSet, DNASample
+from dna_data_structure import DNASample, DNASampleSet
 from complex_generative_model import sample_orig_strands, rand_symbol
 
 
