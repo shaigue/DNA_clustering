@@ -7,6 +7,7 @@ from torch.nn import functional as F
 
 
 def get_basic_conv(kernel_size: int, n_channels: int, out_channels: int = None):
+    """Returns a convolution layer that outputs the same size"""
     assert kernel_size % 2 == 1, f"kernel size should be odd. got {kernel_size}"
     padding = kernel_size // 2
     if out_channels is None:
@@ -21,8 +22,7 @@ class Encoder(nn.Module):
         super().__init__()
         self.n_channels = n_channels
         self.conv1 = get_basic_conv(kernel_size, self.n_channels)
-        # self.conv2 = get_basic_conv(kernel_size, self.n_channels)
-        self.conv3 = get_basic_conv(kernel_size, self.n_channels, 1)
+        self.conv2 = get_basic_conv(kernel_size, self.n_channels, 1)
 
     def forward(self, x):
         batch_size, n_channels, seq_len = x.shape
@@ -30,10 +30,9 @@ class Encoder(nn.Module):
         assert seq_len % 2 == 0, f"sequence length should be even, got {seq_len}"
         x = self.conv1(x)
         x = torch.relu(x)
-        # x = self.conv2(x)
-        # x = torch.relu(x)
+        # down sample in half
         x = torch.avg_pool1d(x, kernel_size=2)
-        x = self.conv3(x)
+        x = self.conv2(x)
         # remove the channel dimension
         x = torch.reshape(x, (batch_size, seq_len // 2))
         x = torch.tanh(x)
@@ -46,8 +45,7 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.n_channels = n_channels
         self.conv1 = get_basic_conv(kernel_size, 1, self.n_channels)
-        # self.conv2 = get_basic_conv(kernel_size, self.n_channels)
-        self.conv3 = get_basic_conv(kernel_size, self.n_channels)
+        self.conv2 = get_basic_conv(kernel_size, self.n_channels)
 
     def forward(self, x):
         batch_size, seq_len_half = x.shape
@@ -55,10 +53,9 @@ class Decoder(nn.Module):
         x = torch.reshape(x, (batch_size, 1, seq_len_half))
         x = self.conv1(x)
         x = torch.relu(x)
+        # upsample by 2
         x = F.interpolate(x, scale_factor=2, mode='linear', align_corners=False)
-        # x = self.conv2(x)
-        # x = torch.relu(x)
-        x = self.conv3(x)
+        x = self.conv2(x)
         return x
 
 
@@ -70,10 +67,11 @@ class AutoEncoder(nn.Module):
         self.encoder = Encoder(kernel_size, n_channels)
         self.decoder = Decoder(kernel_size, n_channels)
 
-    def forward(self, x: torch.Tensor, embedding_only=False):
+    def forward(self, x, embedding_only=False):
         """
+        :param x: the input to the network
         :param embedding_only: for inference, we don't have to calculate the reconstruction.
-        :return:
+        :return: the embedding, if embedding_only=False then also the reconstructed inputs.
         """
         z = self.encoder(x)
         if embedding_only:
@@ -86,14 +84,12 @@ def reconstruction_loss(samples, decoded_samples):
     """A loss that takes into account the difference between the input to the encoder and the output of the decoder,
     and forces them to be small."""
     return F.mse_loss(samples, decoded_samples)
-    # return torch.norm(samples - decoded_samples)
 
 
 def k_means_loss(sample_embedding, centroid_embedding):
     """A loss that takes into account the difference between the embedding of the error sample and the original sample,
     and forces them to be small."""
     return F.mse_loss(sample_embedding, centroid_embedding)
-    # return torch.norm(sample_embedding - centroid_embedding)
 
 
 def combined_loss(samples, sample_embedding, centroid_embedding, decoded_samples, loss_lambda):
@@ -104,7 +100,7 @@ def combined_loss(samples, sample_embedding, centroid_embedding, decoded_samples
     return loss_lambda * cluster_loss + (1 - loss_lambda) * aux_loss
 
 
-def main():
+def example():
     # make sure that the input is divisible by 2
     # if s=1, then p=k//2
     x = torch.randn(16, 108, 4)
@@ -116,4 +112,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    example()

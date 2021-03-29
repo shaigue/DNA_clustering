@@ -4,33 +4,7 @@ import random
 import time
 from typing import List
 
-A, C, G, T = 0, 1, 2, 3
-
-
-class DNASample:
-    """A class that represents a DNA samples with potential errors.
-
-    Attributes:
-          strand: the sequence of symbols
-          orig_idx: the index of the original strand
-    """
-    def __init__(self, strand: List[int], orig_idx: int):
-        self.strand = strand
-        self.orig_idx = orig_idx
-
-
-class DNASampleSet:
-    """A class that represents the DNA sample, with the physical reads that we got relating to the original strands.
-
-    Attributes:
-          orig_strands: the list of the original strands
-          err_strands: the list od the strands observed with potential errors, with index relating to the original
-            strand
-
-    """
-    def __init__(self, orig_strands: List[List[int]], err_strands: List[DNASample]):
-        self.orig_strands = orig_strands
-        self.err_strands = err_strands
+from dna_data_structure import DNASample, DNASampleSet, C, G
 
 
 def rand_symbol():
@@ -257,7 +231,7 @@ if __name__ == "__main__":
     dna_samples = create_dna_samples()
     end = time.time()
     print(f"time: {end - start}")
-    print(len(dna_samples.err_strands))
+    print(len(dna_samples.samples))
     print(len(dna_samples.orig_strands))
-    print(dna_samples.err_strands[10].strand)
-    print(dna_samples.orig_strands[dna_samples.err_strands[10].orig_idx])
+    print(dna_samples.samples[10].strand)
+    print(dna_samples.orig_strands[dna_samples.samples[10].orig_idx])
