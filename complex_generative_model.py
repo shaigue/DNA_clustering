@@ -1,8 +1,8 @@
 """This is a file for the complex generative DNA storage channel"""
-from typing import List, Dict, Callable
+import math
 import random
 import time
-import math
+from typing import List
 
 A, C, G, T = 0, 1, 2, 3
 
