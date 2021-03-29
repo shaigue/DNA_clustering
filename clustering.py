@@ -1,3 +1,12 @@
+# TODO: add type annotations https://docs.python.org/3/library/typing.html where simple,
+# TODO: add short docstrings for functions, for example:
+#   def func(arg_1,...,arg_n):
+#       """Calculates bla bla bla... and returns the final value"""
+#       <code>
+#   can add only a simple description, not full explanation of everything
+#   see example in complex_generative_model.py
+
+
 import random
 
 def cluster(s, r, q, w, l, t_low, t_high, local_steps):
