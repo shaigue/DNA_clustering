@@ -2,3 +2,5 @@
 *.pdf
 __pycache__
 data/*train*
+*.pt
+!trained_models/*_best.pt

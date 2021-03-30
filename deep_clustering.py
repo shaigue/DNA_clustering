@@ -51,7 +51,7 @@ def main():
     logs = {}
     for generator in ['simple', 'complex']:
         logs[generator] = train_best_models(generator)
-    with open('deep_clustering_logs.json') as f:
+    with open('deep_clustering_logs_1.json', 'w') as f:
         json.dump(logs, f)
 
 
