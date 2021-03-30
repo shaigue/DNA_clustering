@@ -52,5 +52,3 @@ with pytorch.
 * `model.py` - here you can find the definition of our auto-encoder network and the loss functions
 * `simple_generative_model.py` - implementation of the Simple Generative Model (SGM)
 * `train.py` - the training loop to train & evaluate the deep clustering model.
-
-## TODO: \*\*\*GAL\*\*\*
