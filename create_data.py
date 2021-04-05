@@ -93,6 +93,25 @@ def create_data():
     print("finished generating data.")
 
 
+def create_original_paper_data():
+    """Generate the data for the experiment, using the parameters of the original paper"""
+    # create the different datasets
+    partitions = ['test', 'dev']
+    for part in partitions:
+        # simple generative model
+        print("generating data...")
+        dna_sample_set = generate_simple(
+            n_clusters=1_000,
+            cluster_size=10,
+            error_p=0.04,
+            strand_length=110,
+        )
+        json_file = Path(f'data/original_paper_data_{part}.json')
+        dna_sample_set.to_json(json_file)
+
+    print("finished generating data.")
+
+
 def example():
     for part in ['train', 'dev', 'test']:
         for generator in ['complex', 'simple']:
@@ -104,4 +123,5 @@ def example():
 
 
 if __name__ == "__main__":
-    create_data()
+    # create_data()
+    create_original_paper_data()
