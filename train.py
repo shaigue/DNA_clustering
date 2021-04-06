@@ -4,6 +4,7 @@ from collections import defaultdict
 
 import numpy as np
 from sklearn.cluster import KMeans
+from sklearn import metrics
 import torch
 from torch import nn
 from torch import optim
@@ -96,7 +97,7 @@ class Trainer:
         self.optimizer.step()
         return loss.detach().cpu().numpy()
 
-    def evaluate(self, dataset: DNADataset = None):
+    def evaluate(self, dataset: DNADataset = None, return_fmi=False):
         """Evaluates the accuracy of the model over the given dataset."""
         self.model.eval()
         if dataset is None:
@@ -118,6 +119,10 @@ class Trainer:
             clustering_algo = KMeans(n_clusters)
             cluster_estimation = clustering_algo.fit_predict(embedding_list)
 
+            if return_fmi:
+                fmi_score = metrics.fowlkes_mallows_score(cluster_labels, cluster_estimation)
+                return fmi_score
+
             # convert the clustering to a partition so it will fit the definition of the accuracy defined in the paper
             true_partition = convert_cluster_labels_to_partition(cluster_labels)
             estimated_partition = convert_cluster_labels_to_partition(cluster_estimation)
@@ -127,11 +132,11 @@ class Trainer:
 
 
 def example():
-    from dna_dataset import load_datasets
+    from dna_dataset import load_to_torch_dataset
     from model import AutoEncoder
     import time
 
-    train_data, dev_data, test_data = load_datasets('complex')
+    train_data, dev_data, test_data = load_to_torch_dataset('complex')
     model = AutoEncoder()
     trainer = Trainer('example', model, train_data, dev_data)
     start = time.time()

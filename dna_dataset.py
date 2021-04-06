@@ -1,7 +1,10 @@
 """This is the pytorch wrapper for the DNASampleSet to use it for training the model."""
+from pathlib import Path
+
 import numpy as np
 
-from create_data import load_data_to_dna_sample_set
+from create_data import get_data_path
+from dna_data_structure import DNASampleSet
 
 PAD_SYMBOL = -1
 SEQUENCE_LEN = 120
@@ -32,22 +35,20 @@ def process_strand(strand: list[int]) -> np.ndarray:
     return to_one_hot_encoding_plains(strand)
 
 
-def load_data_to_numpy(part: str, generator: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """loads the data to a form that is easy to use for training the model."""
-    dna_sample_set = load_data_to_dna_sample_set(part, generator)
-    n_samples = len(dna_sample_set.samples)
+def load_data_from_dna_samples(dna_samples: DNASampleSet) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    n_samples = len(dna_samples.samples)
     # initialize the empty arrays
     noisy_one_hot_encoded = np.empty((n_samples, N_SYMBOLS, SEQUENCE_LEN), dtype=np.float32)
     original_one_hot_encoded = np.empty((n_samples, N_SYMBOLS, SEQUENCE_LEN), dtype=np.float32)
     cluster_indices = np.empty(n_samples, dtype=np.int32)
 
-    for i, dna_sample in enumerate(dna_sample_set.samples):
+    for i, dna_sample in enumerate(dna_samples.samples):
         cluster_indices[i] = dna_sample.orig_idx
 
         noisy = dna_sample.strand
         noisy_one_hot_encoded[i] = process_strand(noisy)
 
-        original = dna_sample_set.orig_strands[dna_sample.orig_idx]
+        original = dna_samples.orig_strands[dna_sample.orig_idx]
         original_one_hot_encoded[i] = process_strand(original)
 
     return noisy_one_hot_encoded, original_one_hot_encoded, cluster_indices
@@ -55,10 +56,20 @@ def load_data_to_numpy(part: str, generator: str) -> tuple[np.ndarray, np.ndarra
 
 class DNADataset:
     """A simple interface to the dataset"""
-    def __init__(self, part: str, generator: str):
-        self.noisy_one_hot_encoded, self.original_one_hot_encoded, self.cluster_indices = \
-            load_data_to_numpy(part, generator)
+    def __init__(self, noisy_one_hot_encoded, original_one_hot_encoded, cluster_indices):
+        self.noisy_one_hot_encoded = noisy_one_hot_encoded
+        self.original_one_hot_encoded = original_one_hot_encoded
+        self.cluster_indices = cluster_indices
         self.n_samples = len(self.noisy_one_hot_encoded)
+
+    @classmethod
+    def from_dna_sample_set(cls, samples: DNASampleSet):
+        return cls(*load_data_from_dna_samples(samples))
+
+    @classmethod
+    def from_json(cls, json_path: Path):
+        dna_samples = DNASampleSet.from_json(json_path)
+        return cls.from_dna_sample_set(dna_samples)
 
     def __len__(self):
         return self.n_samples
@@ -82,17 +93,22 @@ class DNADataset:
                 yield noisy, original
 
 
-def load_datasets(generator: str):
-    train = DNADataset('train', generator)
-    dev = DNADataset('dev', generator)
-    test = DNADataset('test', generator)
+def load_to_torch_dataset(generator: str):
+    """Loads the data into pytorch compatible dataset"""
+    train_path = get_data_path('train', generator)
+    test_path = get_data_path('test', generator)
+    dev_path = get_data_path('dev', generator)
+
+    train = DNADataset.from_json(train_path)
+    dev = DNADataset.from_json(dev_path)
+    test = DNADataset.from_json(test_path)
     return train, dev, test
 
 
 def example():
     import time
     start = time.time()
-    train_set, dev_set, test_set = load_datasets('complex')
+    train_set, dev_set, test_set = load_to_torch_dataset('complex')
     end = time.time()
     print(f"took {end - start:.3f} seconds to load the data.")
 

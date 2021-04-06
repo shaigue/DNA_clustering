@@ -41,14 +41,6 @@ def load_data_to_dict(part: str, generator: str) -> dict:
     return d
 
 
-def load_data_to_dna_sample_set(part: str, generator: str) -> DNASampleSet:
-    """Loads the data into a dna sample set"""
-    assert part in ['train', 'dev', 'test']
-    assert generator in ['complex', 'simple']
-    data_path = get_data_path(part, generator)
-    return DNASampleSet.from_json(data_path)
-
-
 def create_data():
     """Generate the data for the experiment."""
     # create the different datasets
@@ -110,16 +102,6 @@ def create_original_paper_data():
         dna_sample_set.to_json(json_file)
 
     print("finished generating data.")
-
-
-def example():
-    for part in ['train', 'dev', 'test']:
-        for generator in ['complex', 'simple']:
-            try:
-                d = load_data_to_dict(part, generator)
-                print(f"success loading part={part}, generator={generator}")
-            except:
-                print(f"fail loading part={part}, generator={generator}")
 
 
 if __name__ == "__main__":
