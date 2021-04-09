@@ -95,6 +95,13 @@ class DNASampleSet:
         with json_file.open('r') as jf:
             d = json.load(jf)
         return cls.from_dict(d)
+    
+    @classmethod
+    def get_cluster_from_json(cls, json_file: Path):
+        """Reads the array-like clustering from a saved json file"""
+        with json_file.open('r') as jf:
+            d = json.load(jf)
+        return d['sample_original_indices']
 
 
 def convert_from_pickle_to_json(pickle_file: Path):
