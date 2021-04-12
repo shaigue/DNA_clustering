@@ -6,7 +6,7 @@ Technion Israel Institute of Technology, Winter 2020 - 2021, by Shai and Gal.
 
 for any question, you can contact the contributors of this repo.
 
-the report for this project is TODO
+the report for this project is DNA_clustering.pdf
 
 
 ## setup
